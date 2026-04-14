@@ -9,7 +9,7 @@ liveFeeds: [
   { id:'schneier', name:'Schneier on Security', url:'https://www.schneier.com/feed/atom/', site:'https://www.schneier.com/', color:'#e930ff' },
   { id:'therecord', name:'The Record', url:'https://therecord.media/feed', site:'https://therecord.media/', color:'#ff3355' },
   { id:'projectzero', name:'Google Project Zero', url:'https://googleprojectzero.blogspot.com/feeds/posts/default', site:'https://googleprojectzero.blogspot.com/', color:'#00ff9d' },
-  { id:'troyhunt', name:'Troy Hunt', url:'https://www.troyhunt.com/rss/', site:'https://www.troyhunt.com/', color:'#00c8ff' }
+  { id:'troyhunt', name:'Troy Hunt', url:'https://www.troyhunt.com/rss/', site:'https://www.troyhunt.com/', color:'#00c8ff' },
 ],
 
 // ---- RSS DIRECTORY ----
@@ -150,6 +150,8 @@ training: [
   { title:'CTFtime', url:'https://ctftime.org/', badge:'Directory', badgeClass:'badge-cyan', desc:'Definitive global CTF competition directory and ranking system. Calendar, team rankings, writeup archive, and community hub.', tags:['competitions','rankings','writeups'] },
   { title:'Cybrary', url:'https://www.cybrary.it/', badge:'Platform', badgeClass:'badge-magenta', desc:'Career development with courses, labs, and career paths. Certification prep for CompTIA, ISC2, ISACA. Free and premium tiers.', tags:['career','cert-prep','free-tier'] },
   { title:'CyberDefenders', url:'https://cyberdefenders.org/', badge:'Blue Team', badgeClass:'badge-cyan', desc:'Free blue team training platform. Real-world investigation challenges for SOC analysts, DFIR, and threat hunting skills.', tags:['blue-team','DFIR','free'] },
+  { title: 'XeusHack', url: 'https://www.XeusHack.com/', badge: 'Hacker Articles', badgeClass: 'badge-pink', cat: 'learning', desc: '.', tags: ['hacking', 'articles', 'free', 'intermediate'] },
+
   // ══════════════════════════════════════════════════════════════════
   // CTF & LEARNING PLATFORMS
   // ══════════════════════════════════════════════════════════════════
