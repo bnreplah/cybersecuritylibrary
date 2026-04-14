@@ -151,7 +151,7 @@ training: [
   { title:'Cybrary', url:'https://www.cybrary.it/', badge:'Platform', badgeClass:'badge-magenta', desc:'Career development with courses, labs, and career paths. Certification prep for CompTIA, ISC2, ISACA. Free and premium tiers.', tags:['career','cert-prep','free-tier'] },
   { title:'CyberDefenders', url:'https://cyberdefenders.org/', badge:'Blue Team', badgeClass:'badge-cyan', desc:'Free blue team training platform. Real-world investigation challenges for SOC analysts, DFIR, and threat hunting skills.', tags:['blue-team','DFIR','free'] },
   { title: 'XeusHack', url: 'https://www.XeusHack.com/', badge: 'Hacker Articles', badgeClass: 'badge-pink', cat: 'learning', desc: '.', tags: ['hacking', 'articles', 'free', 'intermediate'] },
-
+  { title: 'Veracode Knowledge Base', url: 'https://www.veracode.com/security', badge: 'Knowledge Base', badgeClass:'badge-cyan', desc: 'Veracode Knowledge Base Articles, containing tons of industry knowledge as a leader in the application security space for over 15 years', tags:['hacking', 'enterprise', 'learning', 'articles', 'resources'] },
   // ══════════════════════════════════════════════════════════════════
   // CTF & LEARNING PLATFORMS
   // ══════════════════════════════════════════════════════════════════
@@ -169,6 +169,7 @@ training: [
   { title: 'TCM Security Academy', url: 'https://academy.tcm-sec.com/', badge: 'Affordable Training', badgeClass: 'badge-pink', cat: 'learning', desc: 'Affordable high-quality pentesting courses by practitioners — practical ethical hacking, AD attacks, PNPT certification, and privilege escalation. Best value paid security training.', tags: ['paid', 'training', 'pentesting', 'affordable', 'intermediate'] },
   { title: 'Hack The Box Academy', url: 'https://academy.hackthebox.com/', badge: 'Structured Learning', badgeClass: 'badge-pink', cat: 'learning', desc: 'Structured cybersecurity curriculum from HTB covering penetration testing, web exploitation, Active Directory, and exploit development with skill-tree progression and certificates.', tags: ['freemium', 'learning', 'structured', 'pentesting', 'intermediate'] },
   { title: 'SANS SEC504', url: 'https://www.sans.org/cyber-security-courses/hacker-tools-techniques-incident-handling/', badge: 'GCIH Course', badgeClass: 'badge-pink', cat: 'learning', desc: 'SANS\'s flagship incident response and hacker techniques course — covers attacker tools, exploitation, and hands-on incident handling leading to the GCIH certification.', tags: ['paid', 'certification', 'sans', 'ir', 'advanced'] },
+  { title: 'Veracode Security Labs', url: 'https://www.veracode.com/security', badge: 'Security Labs', badgeClass:'badge-cyan', desc: 'Veracode Security Labs, containing tons of industry knowledge as a leader in the application security space for over 15 years', tags:['hacking', 'enterprise', 'learning', 'labs', 'resources', 'interactive'] },
 
 ],
 
