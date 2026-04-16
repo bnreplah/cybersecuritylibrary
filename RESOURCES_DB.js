@@ -586,7 +586,8 @@ culture:[
   { title: 'Hacker Spaces (Find Yours)', url: 'https://wiki.hackerspaces.org/List_of_ALL_Hacker_Spaces', badge: 'Local Communities', badgeClass: 'badge-fuchsia', cat: 'culture', desc: 'Comprehensive directory of hackerspaces worldwide — find your local community workshop for electronics, 3D printing, radio, security research, and collaborative maker projects.', tags: ['community', 'local', 'maker', 'free', 'beginner'] },
   { title: 'Phrack Magazine', url: 'http://www.phrack.org/', badge: 'Underground E-Zine', badgeClass: 'badge-fuchsia', cat: 'culture', desc: 'The legendary underground hacker e-zine published since 1985 — a rite of passage for serious security researchers. Deep technical articles on exploitation, reverse engineering, and underground culture written by and for elite hackers.', tags: ['magazine', 'hacker-culture', 'history', 'advanced', 'free'] },
   { title: 'The Hacker Manifesto (Conscience of a Hacker)', url: 'http://phrack.org/issues/7/3.html', badge: 'Hacker Culture', badgeClass: 'badge-fuchsia', cat: 'culture', desc: 'The Mentor\'s 1986 text published in Phrack Issue 7 — the foundational philosophical document of hacker culture. Read by every hacker at some point. "We explore… and you call us criminals."', tags: ['history', 'hacker-culture', 'free', 'beginner'] },
- 
+  { title: 'The Whole World Catalog Index', url: 'https://wholeearth.info/', badge: 'Underground Zine', badgeClass: 'badge-fuchsia', cat: 'culture', desc: 'A series of magazines published from the 1980-2002', tags: ['magazine', 'hacker-culture', 'history', 'advanced', 'free'] },
+
   // ══════════════════════════════════════════════════════════════════
   // DEF CON GROUPS (LOCAL)
   // ══════════════════════════════════════════════════════════════════
@@ -620,7 +621,7 @@ culture:[
   { title: 'Bug Bounty Village', url: 'https://www.bugbountyvillage.com/', badge: 'DEF CON Village', badgeClass: 'badge-lime', cat: 'defcon-villages', desc: 'DEF CON village connecting bug bounty hunters with programs and community — workshops on finding bugs, responsible disclosure, program management, and hacker monetization strategies.', tags: ['bug-bounty', 'village', 'beginner', 'web'] },
   { title: 'Cloud Village', url: 'https://cloudvillage.org/', badge: 'DEF CON Village', badgeClass: 'badge-lime', cat: 'defcon-villages', desc: 'DEF CON village dedicated to cloud security — AWS/GCP/Azure attack techniques, IAM exploitation, serverless vulnerabilities, and cloud-native defense strategies from practitioners.', tags: ['cloud', 'village', 'aws', 'azure', 'intermediate'] },
   { title: 'Packet Hacking Village', url: 'https://www.wallofsheep.com/', badge: 'DEF CON Village — Wall of Sheep', badgeClass: 'badge-lime', cat: 'defcon-villages', desc: 'DEF CON\'s legendary Wall of Sheep — network security monitoring and packet analysis village. Displays captured credentials from conference attendees using unencrypted protocols. Real-world network forensics education.', tags: ['network', 'packets', 'village', 'intermediate'] },
- 
+  
   // ══════════════════════════════════════════════════════════════════
   // HACKER CULTURE — ADDITIONAL ORGS & ZINES
   // ══════════════════════════════════════════════════════════════════
