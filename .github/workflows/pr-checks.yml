@@ -1,0 +1,171 @@
+name: PR Contribution Checks
+
+on:
+  pull_request:
+    branches: [main]
+    types: [opened, synchronize, reopened]
+
+jobs:
+  schema-validation:
+    name: Validate RESOURCES_DB Schema
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout PR
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Validate RESOURCES_DB.js can be parsed
+        run: |
+          node -e "
+            const fs = require('fs');
+            const src = fs.readFileSync('RESOURCES_DB.js', 'utf8');
+            try {
+              // Safely evaluate the DB file
+              const wrapped = '(function(){ ' + src.replace('var RESOURCES_DB', 'return') + '})()';
+              const db = eval(wrapped);
+
+              const required = ['liveFeeds','rssNews','rssVendor','rssIndy','events','research','tools','training','threatIntel'];
+              const missing = required.filter(k => !db[k]);
+              if (missing.length) {
+                console.error('Missing required DB keys:', missing.join(', '));
+                process.exit(1);
+              }
+
+              let errors = 0;
+              const categories = Object.keys(db);
+              categories.forEach(cat => {
+                const entries = db[cat];
+                if (!Array.isArray(entries)) return;
+                entries.forEach((entry, i) => {
+                  if (!entry.url && !entry.rss && !entry.site) {
+                    console.warn('WARNING: ' + cat + '[' + i + '] has no url/rss/site field:', entry.title || '(untitled)');
+                  }
+                  if (!entry.title && !entry.name) {
+                    console.error('ERROR: ' + cat + '[' + i + '] missing title/name field');
+                    errors++;
+                  }
+                  // Validate URL format if present
+                  ['url','rss','site'].forEach(field => {
+                    if (entry[field] && !/^https?:\/\//.test(entry[field]) && !/^http:\/\//.test(entry[field])) {
+                      console.warn('WARNING: ' + cat + '[' + i + '] ' + field + ' looks malformed:', entry[field]);
+                    }
+                  });
+                });
+              });
+
+              const totalEntries = categories.reduce((sum, k) => sum + (Array.isArray(db[k]) ? db[k].length : 0), 0);
+              console.log('DB validation passed. Categories: ' + categories.length + ', Total entries: ' + totalEntries);
+
+              if (errors > 0) {
+                console.error(errors + ' schema error(s) found.');
+                process.exit(1);
+              }
+            } catch(e) {
+              console.error('Failed to parse RESOURCES_DB.js:', e.message);
+              process.exit(1);
+            }
+          "
+
+  html-validation:
+    name: Validate index.html Structure
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout PR
+        uses: actions/checkout@v4
+
+      - name: Check index.html structure
+        run: |
+          failed=0
+
+          # Must contain required elements
+          for pattern in \
+            '<!DOCTYPE html>' \
+            'id="liveFeedsGrid"' \
+            'id="eventsGrid"' \
+            'RESOURCES_DB' \
+            'Content-Security-Policy' \
+            'noopener noreferrer'; do
+            if ! grep -q "$pattern" index.html; then
+              echo "::error::Missing required pattern in index.html: $pattern"
+              failed=$((failed+1))
+            fi
+          done
+
+          # Must NOT contain cybopsec (old branding)
+          if grep -qi 'cybopsec' index.html; then
+            echo "::error::index.html contains 'cybopsec' — use 'bnreplah/cybersecuritylibrary' instead"
+            failed=$((failed+1))
+          fi
+
+          if [[ $failed -gt 0 ]]; then
+            echo "$failed check(s) failed."
+            exit 1
+          fi
+
+          echo "index.html structure checks passed."
+
+  security-headers-check:
+    name: Check Security Headers
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout PR
+        uses: actions/checkout@v4
+
+      - name: Verify CSP and security meta tags are present
+        run: |
+          failed=0
+          for tag in \
+            'Content-Security-Policy' \
+            'X-Content-Type-Options' \
+            'X-Frame-Options' \
+            'no-referrer'; do
+            if ! grep -q "$tag" index.html; then
+              echo "::error::Security header/meta missing: $tag"
+              failed=$((failed+1))
+            fi
+          done
+
+          # Check that no eval() or innerHTML with user data slipped in
+          if grep -E "eval\s*\(" index.html | grep -v "\/\/" | grep -qv "no eval"; then
+            echo "::warning::Possible eval() usage detected — review carefully"
+          fi
+
+          if [[ $failed -gt 0 ]]; then
+            exit 1
+          fi
+
+          echo "Security header checks passed."
+
+  changed-files-summary:
+    name: Summarize Changed Files
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout PR
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: List changed files
+        run: |
+          echo "### Changed Files" >> $GITHUB_STEP_SUMMARY
+          git diff --name-only origin/${{ github.base_ref }}...HEAD | while read f; do
+            echo "- \`$f\`" >> $GITHUB_STEP_SUMMARY
+          done
+
+      - name: Count new entries in RESOURCES_DB.js
+        run: |
+          added=$(git diff origin/${{ github.base_ref }}...HEAD -- RESOURCES_DB.js | grep '^+' | grep -c "title:" || true)
+          removed=$(git diff origin/${{ github.base_ref }}...HEAD -- RESOURCES_DB.js | grep '^-' | grep -c "title:" || true)
+          if [[ $added -gt 0 || $removed -gt 0 ]]; then
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "### RESOURCES_DB.js Changes" >> $GITHUB_STEP_SUMMARY
+            echo "- ~$added entries added, ~$removed entries removed" >> $GITHUB_STEP_SUMMARY
+          fi

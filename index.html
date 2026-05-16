@@ -26,7 +26,7 @@
   • JSON-driven resource database for easy automated updates*
   • Feed health monitoring with visual status indicators
   ============================================================ -->
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data: https:; connect-src https://api.rss2json.com https://raw.githubusercontent.com;">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data: https:; connect-src https://api.rss2json.com https://api.allorigins.win https://corsproxy.io https://services.nvd.nist.gov https://www.cisa.gov https://raw.githubusercontent.com;">
 <meta http-equiv="X-Content-Type-Options" content="nosniff">
 <meta http-equiv="X-Frame-Options" content="DENY">
 <meta name="referrer" content="no-referrer">
@@ -540,6 +540,121 @@ nav { display: flex; align-items: center; gap: 0.15rem; }
 
 @keyframes spin { to { transform: rotate(360deg); } }
 
+/* ====== VULNERABILITY THREAD ====== */
+.vuln-thread-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(360px, 1fr));
+  gap: 1rem;
+}
+
+.vuln-panel {
+  background: var(--bg-card);
+  border: 1px solid var(--border-dim);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  transition: border-color 0.2s var(--ease);
+}
+
+.vuln-panel:hover { border-color: rgba(255,51,85,0.3); }
+
+.vuln-panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.85rem 1rem;
+  border-bottom: 1px solid var(--border-dim);
+  background: rgba(255,51,85,0.03);
+}
+
+.vuln-panel-title {
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.vuln-entry {
+  display: block;
+  padding: 0.65rem 1rem;
+  border-bottom: 1px solid rgba(26,29,48,0.6);
+  text-decoration: none;
+  color: var(--text-primary);
+  transition: background 0.15s var(--ease);
+}
+
+.vuln-entry:last-child { border-bottom: none; }
+.vuln-entry:hover { background: rgba(255,51,85,0.04); color: var(--text-primary); }
+
+.vuln-entry-id {
+  font-family: var(--font-mono);
+  font-size: 0.62rem;
+  font-weight: 700;
+  color: var(--accent-red);
+  letter-spacing: 0.05em;
+  margin-bottom: 0.2rem;
+}
+
+.vuln-entry-title {
+  font-size: 0.75rem;
+  font-weight: 500;
+  line-height: 1.45;
+  margin-bottom: 0.3rem;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.vuln-entry-meta {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  font-family: var(--font-mono);
+  font-size: 0.57rem;
+  color: var(--text-dim);
+}
+
+.vuln-severity {
+  display: inline-block;
+  padding: 0.1rem 0.38rem;
+  border-radius: 3px;
+  font-family: var(--font-mono);
+  font-size: 0.52rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.sev-critical { background: rgba(255,51,85,0.18); color: var(--accent-red); border: 1px solid rgba(255,51,85,0.3); }
+.sev-high { background: rgba(255,170,0,0.15); color: var(--accent-amber); border: 1px solid rgba(255,170,0,0.3); }
+.sev-medium { background: rgba(144,85,255,0.15); color: var(--accent-purple); border: 1px solid rgba(144,85,255,0.3); }
+.sev-low { background: rgba(0,255,157,0.08); color: var(--accent-green); border: 1px solid rgba(0,255,157,0.2); }
+.sev-none { background: rgba(126,130,160,0.1); color: var(--text-secondary); border: 1px solid rgba(126,130,160,0.2); }
+.sev-kev { background: rgba(255,170,0,0.18); color: var(--accent-amber); border: 1px solid rgba(255,170,0,0.35); }
+.sev-exploit { background: rgba(233,48,255,0.15); color: var(--accent-magenta); border: 1px solid rgba(233,48,255,0.3); }
+.sev-advisory { background: rgba(0,200,255,0.12); color: var(--accent-cyan); border: 1px solid rgba(0,200,255,0.25); }
+
+.vuln-thread-status {
+  display: flex;
+  align-items: center;
+  gap: 1.25rem;
+  flex-wrap: wrap;
+  font-family: var(--font-mono);
+  font-size: 0.62rem;
+  color: var(--text-secondary);
+  background: var(--bg-surface);
+  border: 1px solid var(--border-dim);
+  border-radius: var(--radius);
+  padding: 0.55rem 1rem;
+  margin-bottom: 1rem;
+}
+
+@media (max-width: 960px) {
+  .vuln-thread-grid { grid-template-columns: 1fr; }
+}
+
 /* ====== FILTER TABS ====== */
 .filter-bar {
   display: flex;
@@ -966,6 +1081,7 @@ nav { display: flex; align-items: center; gap: 0.15rem; }
       <a href="#tools" class="nav-link">Tools</a>
       <a href="#training" class="nav-link">Training</a>
       <a href="#threat-intel" class="nav-link">Threat Intel</a>
+      <a href="#vuln-thread" class="nav-link">Vuln Feed</a>
       <a href="#communities" class="nav-link">Community</a>
       <a href="#contribute" class="nav-link">Contribute</a>
     </nav>
@@ -1422,6 +1538,23 @@ nav { display: flex; align-items: center; gap: 0.15rem; }
   </section>
 
 
+  <!-- ====== LIVE VULNERABILITY THREAD ====== -->
+  <section class="section fade-in" id="vuln-thread">
+    <div class="section-header">
+      <div class="section-icon">&#9888;</div>
+      <h2 class="section-title">Live Vulnerability Thread</h2>
+      <span class="section-count">// SOC ALERT FEED</span>
+    </div>
+    <div class="vuln-thread-status">
+      <div><span class="status-dot" id="vulnStatusDot"></span> <span id="vulnStatusText">Loading vulnerability data...</span></div>
+      <div>Sources: NVD CVE &bull; CISA KEV &bull; Exploit-DB &bull; Packet Storm &bull; GitHub Advisories</div>
+      <div style="margin-left:auto">Last updated: <span id="vulnLastUpdate">--</span></div>
+    </div>
+    <div class="vuln-thread-grid" id="vulnThreadGrid">
+      <!-- Populated by JavaScript -->
+    </div>
+  </section>
+
   <!-- ====== CONTRIBUTE ====== -->
   <section class="section fade-in" id="contribute">
     <div class="contribute-section">
@@ -1463,6 +1596,7 @@ nav { display: flex; align-items: center; gap: 0.15rem; }
     <a href="#tools">Tools</a>
     <a href="#training">Training</a>
     <a href="#threat-intel">Threat Intel</a>
+    <a href="#vuln-thread">Vuln Thread</a>
     <a href="#communities">Communities</a>
     <a href="#appsec">Application Security</a>
     <a href="#pentesting">Pentesting</a>
@@ -1491,7 +1625,7 @@ nav { display: flex; align-items: center; gap: 0.15rem; }
   <div class="security-badge-footer">
     &#9670; CSP Hardened &bull; No Tracking &bull; No Cookies &bull; Fully Static &bull; HTTPS Only
   </div>
-  <div class="footer-copy">&copy; 2026 Cybopsec Research &mdash; CC BY 4.0 &mdash; Community contributions welcome</div>
+  <div class="footer-copy">&copy; 2026 bnreplah / Cyber Security Library &mdash; CC BY 4.0 &mdash; Community contributions welcome</div>
 </footer>
 
 <button class="btt" id="btt" aria-label="Back to top">&#8593;</button>
@@ -2481,14 +2615,85 @@ function renderRssGrid(containerId, items) {
 }
 
 // ============================================================
-// LIVE FEED ENGINE
-// Uses rss2json.com free API — CORS-enabled, no API key needed
-// Rate limit: ~10 req/minute free tier (plenty for 8 feeds)
+// RSS FEED ENGINE — Multi-method with automatic fallback
+// Method 1: rss2json.com (returns parsed JSON, no XML needed)
+// Method 2: AllOrigins proxy (returns raw XML, parsed client-side)
+// Method 3: corsproxy.io (raw XML, parsed client-side)
 // ============================================================
-var RSS2JSON_API = 'https://api.rss2json.com/v1/api.json?rss_url=';
 var totalFeedItems = 0;
 var feedsLoaded = 0;
 var feedsFailed = 0;
+
+function parseRssXml(xmlStr) {
+  try {
+    var parser = new DOMParser();
+    var doc = parser.parseFromString(xmlStr, 'text/xml');
+    if (doc.querySelector('parsererror')) return [];
+    var items = [];
+    // RSS 2.0
+    doc.querySelectorAll('item').forEach(function(item) {
+      var linkEl = item.querySelector('link');
+      var link = '';
+      if (linkEl) {
+        link = linkEl.textContent.trim() ||
+               (linkEl.nextSibling && linkEl.nextSibling.nodeValue && linkEl.nextSibling.nodeValue.trim()) || '';
+      }
+      items.push({
+        title: item.querySelector('title') ? item.querySelector('title').textContent.trim() : '',
+        link: link,
+        pubDate: item.querySelector('pubDate') ? item.querySelector('pubDate').textContent.trim() : ''
+      });
+    });
+    // Atom 1.0
+    if (!items.length) {
+      doc.querySelectorAll('entry').forEach(function(entry) {
+        var linkEl = entry.querySelector('link[type="text/html"]') || entry.querySelector('link:not([rel="self"])') || entry.querySelector('link');
+        items.push({
+          title: entry.querySelector('title') ? entry.querySelector('title').textContent.trim() : '',
+          link: linkEl ? (linkEl.getAttribute('href') || linkEl.textContent.trim()) : '',
+          pubDate: entry.querySelector('published') ? entry.querySelector('published').textContent.trim()
+                 : (entry.querySelector('updated') ? entry.querySelector('updated').textContent.trim() : '')
+        });
+      });
+    }
+    return items.filter(function(i) { return i.title && i.link; });
+  } catch(e) { return []; }
+}
+
+function fetchFeedWithFallbacks(feedUrl, callback) {
+  // Method 1 — rss2json.com (parsed JSON)
+  fetch('https://api.rss2json.com/v1/api.json?rss_url=' + encodeURIComponent(feedUrl))
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+      if (data.status === 'ok' && data.items && data.items.length) {
+        callback(null, data.items);
+      } else {
+        throw new Error('rss2json: no items');
+      }
+    })
+    .catch(function() {
+      // Method 2 — AllOrigins proxy (raw XML)
+      fetch('https://api.allorigins.win/get?url=' + encodeURIComponent(feedUrl))
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+          if (!data.contents) throw new Error('allorigins: empty');
+          var items = parseRssXml(data.contents);
+          if (!items.length) throw new Error('allorigins: no items parsed');
+          callback(null, items);
+        })
+        .catch(function() {
+          // Method 3 — corsproxy.io (raw XML)
+          fetch('https://corsproxy.io/?' + encodeURIComponent(feedUrl))
+            .then(function(r) { return r.text(); })
+            .then(function(text) {
+              var items = parseRssXml(text);
+              if (!items.length) throw new Error('corsproxy: no items parsed');
+              callback(null, items);
+            })
+            .catch(function(err) { callback(err, []); });
+        });
+    });
+}
 
 function renderLiveFeeds() {
   var grid = document.getElementById('liveFeedsGrid');
@@ -2519,25 +2724,17 @@ function renderLiveFeeds() {
 }
 
 function fetchFeed(feed) {
-  var url = RSS2JSON_API + encodeURIComponent(feed.url);
-  fetch(url)
-    .then(function(r) { return r.json(); })
-    .then(function(data) {
-      if (data.status === 'ok' && data.items && data.items.length) {
-        renderFeedItems(feed.id, data.items.slice(0, 8), feed.color);
-        totalFeedItems += Math.min(data.items.length, 8);
-        feedsLoaded++;
-      } else {
-        showFeedError(feed.id, 'No items returned');
-        feedsFailed++;
-      }
-      updateFeedStatus();
-    })
-    .catch(function(err) {
-      showFeedError(feed.id, 'Failed to load');
+  fetchFeedWithFallbacks(feed.url, function(err, items) {
+    if (err || !items || !items.length) {
+      showFeedError(feed.id, 'All methods failed');
       feedsFailed++;
-      updateFeedStatus();
-    });
+    } else {
+      renderFeedItems(feed.id, items.slice(0, 8), feed.color);
+      totalFeedItems += Math.min(items.length, 8);
+      feedsLoaded++;
+    }
+    updateFeedStatus();
+  });
 }
 
 function renderFeedItems(feedId, items, color) {
@@ -2609,6 +2806,242 @@ function updateFeedStatus() {
       textEl.textContent = 'Feeds offline — visit sites directly';
     }
     document.getElementById('lastUpdate').textContent = new Date().toLocaleString();
+  }
+}
+
+// ============================================================
+// VULNERABILITY THREAD ENGINE
+// Sources: NVD JSON API, CISA KEV JSON, Exploit-DB RSS,
+//          Packet Storm RSS, GitHub Security Advisories Atom
+// ============================================================
+var VULN_SOURCES = [
+  { id:'nvd-cve',       name:'NVD Recent CVEs',       color:'#ff3355',  type:'nvd' },
+  { id:'cisa-kev',      name:'CISA KEV',               color:'#ffaa00',  type:'kev' },
+  { id:'exploitdb',     name:'Exploit-DB',             color:'#e930ff',  type:'rss',
+    url:'https://www.exploit-db.com/rss.xml' },
+  { id:'packetstorm',   name:'Packet Storm',           color:'#9055ff',  type:'rss',
+    url:'https://rss.packetstormsecurity.com/files/tags/exploit/' },
+  { id:'gh-advisories', name:'GitHub Security Advisories', color:'#00c8ff', type:'rss',
+    url:'https://github.com/advisories.atom' }
+];
+
+var vulnLoaded = 0;
+var vulnFailed = 0;
+
+function renderVulnThread() {
+  var grid = document.getElementById('vulnThreadGrid');
+  if (!grid) return;
+  grid.innerHTML = '';
+  vulnLoaded = 0;
+  vulnFailed = 0;
+
+  var dot = document.getElementById('vulnStatusDot');
+  var txt = document.getElementById('vulnStatusText');
+  if (dot) dot.className = 'status-dot amber';
+  if (txt) txt.textContent = 'Loading vulnerability data...';
+
+  VULN_SOURCES.forEach(function(src) {
+    var panel = el('div', 'vuln-panel');
+
+    var header = el('div', 'vuln-panel-header');
+    var titleEl = el('span', 'vuln-panel-title', { text: src.name });
+    titleEl.style.color = src.color;
+    header.appendChild(titleEl);
+    var statusEl = el('div', 'feed-panel-status');
+    statusEl.id = 'vstatus-' + src.id;
+    statusEl.innerHTML = '<div class="feed-loading-spinner"></div>';
+    header.appendChild(statusEl);
+    panel.appendChild(header);
+
+    var body = el('div', 'feed-panel-body');
+    body.id = 'vuln-' + src.id;
+    body.innerHTML = '<div class="feed-loading"><div class="feed-loading-spinner"></div><br>Loading...</div>';
+    panel.appendChild(body);
+
+    grid.appendChild(panel);
+
+    if (src.type === 'nvd')       fetchNvdCves(src);
+    else if (src.type === 'kev')  fetchCisaKev(src);
+    else                           fetchVulnRss(src);
+  });
+}
+
+function fetchNvdCves(src) {
+  var api = 'https://services.nvd.nist.gov/rest/json/cves/2.0?resultsPerPage=10&sortBy=lastModified&sortOrder=descending';
+  fetch(api)
+    .then(function(r) { if (!r.ok) throw new Error(r.status); return r.json(); })
+    .then(function(data) {
+      if (!data.vulnerabilities || !data.vulnerabilities.length) throw new Error('empty');
+      var items = data.vulnerabilities.map(function(v) {
+        var cve = v.cve;
+        var descObj = (cve.descriptions || []).find(function(d) { return d.lang === 'en'; });
+        var metricsArr = (cve.metrics && (cve.metrics.cvssMetricV31 || cve.metrics.cvssMetricV30 || cve.metrics.cvssMetricV2)) || [];
+        var severity = 'NONE';
+        var score = '';
+        if (metricsArr.length) {
+          var m = metricsArr[0].cvssData || metricsArr[0];
+          severity = (m.baseSeverity || '').toUpperCase() || 'NONE';
+          score = m.baseScore ? String(m.baseScore) : '';
+        }
+        return {
+          id:       cve.id,
+          title:    descObj ? descObj.value : 'No description available.',
+          link:     'https://nvd.nist.gov/vuln/detail/' + cve.id,
+          pubDate:  cve.published || '',
+          severity: severity,
+          score:    score
+        };
+      });
+      renderVulnItems(src.id, items, src.color);
+      vulnLoaded++;
+      updateVulnStatus();
+    })
+    .catch(function() {
+      showVulnError(src.id, 'NVD API unavailable');
+      vulnFailed++;
+      updateVulnStatus();
+    });
+}
+
+function fetchCisaKev(src) {
+  var kevUrl = 'https://www.cisa.gov/sites/default/files/feeds/known_exploited_vulnerabilities.json';
+  // Fetch via AllOrigins proxy for CORS
+  fetch('https://api.allorigins.win/get?url=' + encodeURIComponent(kevUrl))
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+      if (!data.contents) throw new Error('empty');
+      var kev = JSON.parse(data.contents);
+      if (!kev.vulnerabilities || !kev.vulnerabilities.length) throw new Error('no vulns');
+      // Take the 10 most recently added
+      var recent = kev.vulnerabilities.slice(-10).reverse();
+      var items = recent.map(function(v) {
+        return {
+          id:       v.cveID,
+          title:    (v.vulnerabilityName || '') + ' — ' + (v.shortDescription || ''),
+          link:     'https://nvd.nist.gov/vuln/detail/' + v.cveID,
+          pubDate:  v.dateAdded || '',
+          severity: 'KEV',
+          score:    v.requiredAction || ''
+        };
+      });
+      renderVulnItems(src.id, items, src.color);
+      vulnLoaded++;
+      updateVulnStatus();
+    })
+    .catch(function() {
+      showVulnError(src.id, 'CISA KEV feed unavailable');
+      vulnFailed++;
+      updateVulnStatus();
+    });
+}
+
+function fetchVulnRss(src) {
+  fetchFeedWithFallbacks(src.url, function(err, items) {
+    if (err || !items || !items.length) {
+      showVulnError(src.id, 'Feed unavailable');
+      vulnFailed++;
+    } else {
+      var mapped = items.slice(0, 10).map(function(item) {
+        return {
+          id:       '',
+          title:    item.title || '',
+          link:     item.link || '#',
+          pubDate:  item.pubDate || '',
+          severity: src.id === 'exploitdb' || src.id === 'packetstorm' ? 'EXPLOIT' : 'ADVISORY',
+          score:    ''
+        };
+      });
+      renderVulnItems(src.id, mapped, src.color);
+      vulnLoaded++;
+    }
+    updateVulnStatus();
+  });
+}
+
+function renderVulnItems(srcId, items, color) {
+  var body = document.getElementById('vuln-' + srcId);
+  var statusEl = document.getElementById('vstatus-' + srcId);
+  if (!body) return;
+  body.innerHTML = '';
+
+  items.forEach(function(item) {
+    var entry = el('a', 'vuln-entry', { href: item.link, target: '_blank', rel: 'noopener noreferrer' });
+
+    if (item.id) {
+      entry.appendChild(el('div', 'vuln-entry-id', { text: item.id }));
+    }
+
+    var titleText = safeText(item.title).substring(0, 120);
+    if (safeText(item.title).length > 120) titleText += '…';
+    entry.appendChild(el('div', 'vuln-entry-title', { text: titleText }));
+
+    var meta = el('div', 'vuln-entry-meta');
+
+    if (item.severity) {
+      var sevMap = { CRITICAL:'sev-critical', HIGH:'sev-high', MEDIUM:'sev-medium',
+                     LOW:'sev-low', NONE:'sev-none', KEV:'sev-kev', EXPLOIT:'sev-exploit', ADVISORY:'sev-advisory' };
+      var sevClass = sevMap[item.severity] || 'sev-none';
+      meta.appendChild(el('span', 'vuln-severity ' + sevClass, { text: item.severity }));
+    }
+
+    if (item.score) {
+      meta.appendChild(el('span', null, { text: 'CVSS ' + item.score }));
+    }
+
+    if (item.pubDate) {
+      try {
+        var d = new Date(item.pubDate);
+        if (!isNaN(d.getTime())) {
+          meta.appendChild(el('span', null, { text: d.toLocaleDateString('en-US', { month:'short', day:'numeric', year:'numeric' }) }));
+        }
+      } catch(e) {}
+    }
+
+    entry.appendChild(meta);
+    body.appendChild(entry);
+  });
+
+  if (statusEl) {
+    statusEl.innerHTML = '';
+    statusEl.appendChild(el('span', 'status-dot green'));
+    statusEl.appendChild(document.createTextNode(' ' + items.length + ' items'));
+  }
+}
+
+function showVulnError(srcId, msg) {
+  var body = document.getElementById('vuln-' + srcId);
+  var statusEl = document.getElementById('vstatus-' + srcId);
+  if (body) {
+    body.innerHTML = '';
+    body.appendChild(el('div', 'feed-error', { text: msg + ' — try again later' }));
+  }
+  if (statusEl) {
+    statusEl.innerHTML = '';
+    statusEl.appendChild(el('span', 'status-dot amber'));
+    statusEl.appendChild(document.createTextNode(' Offline'));
+  }
+}
+
+function updateVulnStatus() {
+  var total = VULN_SOURCES.length;
+  var done = vulnLoaded + vulnFailed;
+  if (done < total) return;
+
+  var dot = document.getElementById('vulnStatusDot');
+  var txt = document.getElementById('vulnStatusText');
+  var upd = document.getElementById('vulnLastUpdate');
+  if (upd) upd.textContent = new Date().toLocaleString();
+  if (!dot || !txt) return;
+
+  if (vulnFailed === 0) {
+    dot.className = 'status-dot green';
+    txt.textContent = 'All ' + vulnLoaded + ' vulnerability sources online';
+  } else if (vulnLoaded > 0) {
+    dot.className = 'status-dot amber';
+    txt.textContent = vulnLoaded + '/' + total + ' sources online';
+  } else {
+    dot.className = 'status-dot red';
+    txt.textContent = 'All sources offline — check network';
   }
 }
 
@@ -2760,13 +3193,15 @@ renderRssGrid('rssNewsGrid', RESOURCES_DB.rssNews);
 renderRssGrid('rssVendorGrid', RESOURCES_DB.rssVendor);
 renderRssGrid('rssIndyGrid', RESOURCES_DB.rssIndy);
 renderLiveFeeds();
+renderVulnThread();
 
-// Auto-refresh live feeds every 15 minutes
+// Auto-refresh live feeds and vuln thread every 15 minutes
 setInterval(function() {
   totalFeedItems = 0;
   feedsLoaded = 0;
   feedsFailed = 0;
   renderLiveFeeds();
+  renderVulnThread();
 }, 15 * 60 * 1000);
 
 })();
