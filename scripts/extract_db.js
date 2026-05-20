@@ -25,8 +25,16 @@ try {
   process.exit(1);
 }
 
-// Evaluate the JS object literal in a controlled scope.
-const wrapped = '(function(){ ' + raw.replace('var RESOURCES_DB', 'return') + ' })()';
+// Evaluate the JS object literal in a controlled scope. We rewrite
+//   var RESOURCES_DB = { ... };
+// as
+//   return { ... };
+// so the wrapper IIFE is valid JS.
+const wrapped =
+  '(function(){ ' +
+  raw.replace(/var\s+RESOURCES_DB\s*=\s*/, 'return ') +
+  ' })()';
+
 let db;
 try {
   // eslint-disable-next-line no-eval

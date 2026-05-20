@@ -21,6 +21,20 @@ on:
           - rssVendor
           - rssIndy
           - liveFeeds
+          - enterprise
+          - pentesting
+          - vulnmanagement
+          - communities
+          - appsec
+          - cloudsec
+          - blueteam
+          - devsecops
+          - mobile
+          - programming
+          - blogs
+          - youtube
+          - podcasts
+          - newsletters
       max_entries:
         description: 'Maximum new entries to propose'
         default: '5'
@@ -73,8 +87,8 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           # resource_finder needs anthropic OR google-genai plus requests,
-          # feedparser, python-dotenv. We install everything to keep it
-          # simple; modal is optional but harmless here.
+          # feedparser, python-dotenv. We install the full requirements
+          # file to keep this simple.
           pip install -r _autonomous_researcher/requirements.txt
 
       - name: Export existing DB to JSON
@@ -114,28 +128,12 @@ jobs:
 
       - name: Show proposals
         run: |
-          node -e "
-            const p = JSON.parse(require('fs').readFileSync('proposed.json','utf8'));
-            console.log('Category:', p.category, '| Proposals:', p.proposals.length);
-            for (const x of p.proposals) {
-              const reach = x.verification && x.verification.reachable ? 'OK' : 'FAIL';
-              const url = x.entry.url || x.entry.rss || x.entry.site || '';
-              const name = x.entry.title || x.entry.name || '(untitled)';
-              console.log('  [' + reach + '] ' + name + ' — ' + url);
-            }
-          "
+          node -e "const p=JSON.parse(require('fs').readFileSync('proposed.json','utf8'));console.log('Category:',p.category,'| Proposals:',p.proposals.length);for(const x of p.proposals){const reach=x.verification&&x.verification.reachable?'OK':'FAIL';const url=x.entry.url||x.entry.rss||x.entry.site||'';const name=x.entry.title||x.entry.name||'(untitled)';console.log('  ['+reach+'] '+name+' — '+url);}"
 
       - name: Count eligible proposals
         id: count
         run: |
-          n=$(node -e "
-            const p = JSON.parse(require('fs').readFileSync('proposed.json','utf8'));
-            const ok = p.proposals.filter(x =>
-              x.verification && x.verification.reachable &&
-              (!x.verification.missing_fields || x.verification.missing_fields.length === 0)
-            );
-            console.log(ok.length);
-          ")
+          n=$(node -e "const p=JSON.parse(require('fs').readFileSync('proposed.json','utf8'));const ok=p.proposals.filter(x=>x.verification&&x.verification.reachable&&(!x.verification.missing_fields||x.verification.missing_fields.length===0));console.log(ok.length);")
           echo "n=$n" >> $GITHUB_OUTPUT
           echo "Eligible proposals: $n"
 
@@ -146,15 +144,7 @@ jobs:
       - name: Parse-check the updated DB
         if: steps.count.outputs.n != '0' && github.event.inputs.dry_run != 'true'
         run: |
-          node -e "
-            const fs = require('fs');
-            const src = fs.readFileSync('RESOURCES_DB.js', 'utf8');
-            const wrapped = '(function(){ ' + src.replace('var RESOURCES_DB', 'return') + ' })()';
-            const db = eval(wrapped);
-            console.log('Parsed OK. Categories:', Object.keys(db).length,
-                        '| Total entries:',
-                        Object.values(db).reduce((s, v) => s + (Array.isArray(v) ? v.length : 0), 0));
-          "
+          node -e "const fs=require('fs');const src=fs.readFileSync('RESOURCES_DB.js','utf8');const w='(function(){ '+src.replace(/var\s+RESOURCES_DB\s*=\s*/,'return ')+' })()';const db=eval(w);console.log('Parsed OK. Categories:',Object.keys(db).length,'| Total entries:',Object.values(db).reduce((s,v)=>s+(Array.isArray(v)?v.length:0),0));"
 
       - name: Open PR with proposed additions
         if: steps.count.outputs.n != '0' && github.event.inputs.dry_run != 'true'
@@ -206,20 +196,5 @@ jobs:
           echo "### Auto-Curate Resources — ${{ steps.category.outputs.name }}" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           if [[ -f proposed.json ]]; then
-            node -e "
-              const p = JSON.parse(require('fs').readFileSync('proposed.json','utf8'));
-              console.log('- Backend: \`' + p.model_backend + '\`');
-              console.log('- Topic: ' + (p.topic ? '\`' + p.topic + '\`' : '_(none)_'));
-              console.log('- Proposals returned: ' + p.proposals.length);
-              console.log('');
-              console.log('| Status | Title | URL | Verified |');
-              console.log('| ---    | ---   | --- | ---      |');
-              for (const x of p.proposals) {
-                const ok = x.verification && x.verification.reachable ? '✅' : '❌';
-                const name = (x.entry.title || x.entry.name || '(untitled)').replace(/\|/g,'\\|');
-                const url = x.entry.url || x.entry.rss || x.entry.site || '';
-                const status = x.verification && x.verification.status;
-                console.log('| ' + ok + ' | ' + name + ' | ' + url + ' | HTTP ' + status + ' |');
-              }
-            " >> $GITHUB_STEP_SUMMARY
+            node -e "const p=JSON.parse(require('fs').readFileSync('proposed.json','utf8'));console.log('- Backend: '+p.model_backend);console.log('- Topic: '+(p.topic||'(none)'));console.log('- Proposals returned: '+p.proposals.length);console.log('');console.log('| Status | Title | URL | HTTP |');console.log('| --- | --- | --- | --- |');for(const x of p.proposals){const ok=x.verification&&x.verification.reachable?'OK':'FAIL';const name=(x.entry.title||x.entry.name||'(untitled)').replace(/\|/g,'\\|');const url=x.entry.url||x.entry.rss||x.entry.site||'';const status=(x.verification&&x.verification.status)||'-';console.log('| '+ok+' | '+name+' | '+url+' | '+status+' |');}" >> $GITHUB_STEP_SUMMARY
           fi
