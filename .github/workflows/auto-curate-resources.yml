@@ -1,0 +1,225 @@
+name: Auto-Curate Resources
+
+on:
+  schedule:
+    # Weekly Monday 04:00 UTC. Category rotates by ISO week number.
+    - cron: '0 4 * * 1'
+  workflow_dispatch:
+    inputs:
+      category:
+        description: 'RESOURCES_DB.js category to curate'
+        type: choice
+        required: true
+        default: 'tools'
+        options:
+          - tools
+          - research
+          - events
+          - training
+          - threatIntel
+          - rssNews
+          - rssVendor
+          - rssIndy
+          - liveFeeds
+      max_entries:
+        description: 'Maximum new entries to propose'
+        default: '5'
+      topic:
+        description: "Optional topic focus, e.g. 'cloud security'"
+        default: ''
+      dry_run:
+        description: 'Generate proposals but do NOT open a PR'
+        type: boolean
+        default: false
+
+permissions:
+  contents: write
+  pull-requests: write
+
+concurrency:
+  group: auto-curate-${{ github.event.inputs.category || 'scheduled' }}
+  cancel-in-progress: false
+
+jobs:
+  curate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout cybersecuritylibrary
+        uses: actions/checkout@v4
+
+      - name: Checkout autonomous-researcher
+        uses: actions/checkout@v4
+        with:
+          repository: bnreplah/autonomous-researcher
+          # Set repo variable AUTONOMOUS_RESEARCHER_REF to the branch / tag
+          # containing the resource_finder module. Defaults to 'main'.
+          ref: ${{ vars.AUTONOMOUS_RESEARCHER_REF || 'main' }}
+          path: _autonomous_researcher
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+          cache-dependency-path: _autonomous_researcher/requirements.txt
+
+      - name: Install Python deps
+        run: |
+          python -m pip install --upgrade pip
+          # resource_finder needs anthropic OR google-genai plus requests,
+          # feedparser, python-dotenv. We install everything to keep it
+          # simple; modal is optional but harmless here.
+          pip install -r _autonomous_researcher/requirements.txt
+
+      - name: Export existing DB to JSON
+        run: |
+          node scripts/extract_db.js RESOURCES_DB.js existing.json
+          node -e "const d=JSON.parse(require('fs').readFileSync('existing.json','utf8'));console.log('Existing entries by category:');for(const k of Object.keys(d))console.log(' ', k, d[k].length)"
+
+      - name: Determine target category
+        id: category
+        run: |
+          if [[ -n "${{ github.event.inputs.category }}" ]]; then
+            cat="${{ github.event.inputs.category }}"
+          else
+            cats=(tools research events training threatIntel rssNews rssVendor rssIndy liveFeeds)
+            week=$(date -u +%V)
+            idx=$(( 10#$week % ${#cats[@]} ))
+            cat="${cats[$idx]}"
+          fi
+          echo "name=$cat" >> $GITHUB_OUTPUT
+          echo "Category for this run: $cat"
+
+      - name: Run resource_finder.discover
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          GOOGLE_API_KEY: ${{ secrets.GOOGLE_API_KEY }}
+          RESOURCE_FINDER_MODEL: ${{ vars.RESOURCE_FINDER_MODEL || 'claude' }}
+          RESOURCE_FINDER_CLAUDE_MODEL: ${{ vars.RESOURCE_FINDER_CLAUDE_MODEL || 'claude-haiku-4-5-20251001' }}
+          RESOURCE_FINDER_GEMINI_MODEL: ${{ vars.RESOURCE_FINDER_GEMINI_MODEL || 'gemini-2.5-flash' }}
+        working-directory: _autonomous_researcher
+        run: |
+          python -m resource_finder.discover \
+            --existing-db "$GITHUB_WORKSPACE/existing.json" \
+            --category "${{ steps.category.outputs.name }}" \
+            --max "${{ github.event.inputs.max_entries || '5' }}" \
+            --topic "${{ github.event.inputs.topic || '' }}" \
+            --out "$GITHUB_WORKSPACE/proposed.json"
+
+      - name: Show proposals
+        run: |
+          node -e "
+            const p = JSON.parse(require('fs').readFileSync('proposed.json','utf8'));
+            console.log('Category:', p.category, '| Proposals:', p.proposals.length);
+            for (const x of p.proposals) {
+              const reach = x.verification && x.verification.reachable ? 'OK' : 'FAIL';
+              const url = x.entry.url || x.entry.rss || x.entry.site || '';
+              const name = x.entry.title || x.entry.name || '(untitled)';
+              console.log('  [' + reach + '] ' + name + ' — ' + url);
+            }
+          "
+
+      - name: Count eligible proposals
+        id: count
+        run: |
+          n=$(node -e "
+            const p = JSON.parse(require('fs').readFileSync('proposed.json','utf8'));
+            const ok = p.proposals.filter(x =>
+              x.verification && x.verification.reachable &&
+              (!x.verification.missing_fields || x.verification.missing_fields.length === 0)
+            );
+            console.log(ok.length);
+          ")
+          echo "n=$n" >> $GITHUB_OUTPUT
+          echo "Eligible proposals: $n"
+
+      - name: Merge into RESOURCES_DB.js
+        if: steps.count.outputs.n != '0' && github.event.inputs.dry_run != 'true'
+        run: node scripts/merge_curated.js proposed.json
+
+      - name: Parse-check the updated DB
+        if: steps.count.outputs.n != '0' && github.event.inputs.dry_run != 'true'
+        run: |
+          node -e "
+            const fs = require('fs');
+            const src = fs.readFileSync('RESOURCES_DB.js', 'utf8');
+            const wrapped = '(function(){ ' + src.replace('var RESOURCES_DB', 'return') + ' })()';
+            const db = eval(wrapped);
+            console.log('Parsed OK. Categories:', Object.keys(db).length,
+                        '| Total entries:',
+                        Object.values(db).reduce((s, v) => s + (Array.isArray(v) ? v.length : 0), 0));
+          "
+
+      - name: Open PR with proposed additions
+        if: steps.count.outputs.n != '0' && github.event.inputs.dry_run != 'true'
+        uses: peter-evans/create-pull-request@v6
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          branch: bot/auto-curate-${{ steps.category.outputs.name }}
+          base: main
+          delete-branch: true
+          commit-message: "bot: auto-curate new ${{ steps.category.outputs.name }} resources"
+          title: "Auto-curate: new ${{ steps.category.outputs.name }} resources"
+          body: |
+            **Category:** `${{ steps.category.outputs.name }}`
+            **Proposed by:** `bnreplah/autonomous-researcher` → `resource_finder.discover`
+            **Topic:** ${{ github.event.inputs.topic || '_(none)_' }}
+            **Eligible proposals:** ${{ steps.count.outputs.n }}
+
+            Each entry's primary URL was verified reachable (HTTP 2xx/3xx,
+            or 401/403/429 = reachable-but-bot-blocked). See the
+            `curator-output-*` workflow artifact for the raw
+            `proposed.json` including per-entry verification details.
+
+            ### Review checklist
+            - [ ] Each entry is a real, durable resource (not a one-off article)
+            - [ ] `title`, `url`, `desc`, `tags` all read well
+            - [ ] `badge` / `badgeClass` / `cat` match the existing style
+            - [ ] No duplicates with existing entries in this or another category
+            - [ ] Tone is neutral (no marketing copy)
+
+            ---
+            _Generated by `.github/workflows/auto-curate-resources.yml`._
+          labels: |
+            auto-curated
+            needs-review
+
+      - name: Upload curator output
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: curator-output-${{ steps.category.outputs.name }}-${{ github.run_id }}
+          path: |
+            existing.json
+            proposed.json
+          retention-days: 14
+
+      - name: Summary
+        if: always()
+        run: |
+          echo "### Auto-Curate Resources — ${{ steps.category.outputs.name }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          if [[ -f proposed.json ]]; then
+            node -e "
+              const p = JSON.parse(require('fs').readFileSync('proposed.json','utf8'));
+              console.log('- Backend: \`' + p.model_backend + '\`');
+              console.log('- Topic: ' + (p.topic ? '\`' + p.topic + '\`' : '_(none)_'));
+              console.log('- Proposals returned: ' + p.proposals.length);
+              console.log('');
+              console.log('| Status | Title | URL | Verified |');
+              console.log('| ---    | ---   | --- | ---      |');
+              for (const x of p.proposals) {
+                const ok = x.verification && x.verification.reachable ? '✅' : '❌';
+                const name = (x.entry.title || x.entry.name || '(untitled)').replace(/\|/g,'\\|');
+                const url = x.entry.url || x.entry.rss || x.entry.site || '';
+                const status = x.verification && x.verification.status;
+                console.log('| ' + ok + ' | ' + name + ' | ' + url + ' | HTTP ' + status + ' |');
+              }
+            " >> $GITHUB_STEP_SUMMARY
+          fi
