@@ -1,0 +1,352 @@
+name: Add Resource Entry
+
+# Manual workflow dispatch that creates a new RESOURCES_DB entry
+# from a form, validates it, and opens a pull request for review.
+# Required approvals and CI checks must pass before merge (per branch protection).
+
+on:
+  workflow_dispatch:
+    inputs:
+
+      # ── Required fields ──────────────────────────────────────────
+      title:
+        description: 'Resource title *'
+        required: true
+        type: string
+
+      url:
+        description: 'Primary URL (https://...) *'
+        required: true
+        type: string
+
+      category:
+        description: 'DB category key *'
+        required: true
+        type: choice
+        options:
+          - research
+          - tools
+          - training
+          - threatIntel
+          - communities
+          - appsec
+          - blueteam
+          - pentesting
+          - vulnmanagement
+          - enterpriseResponse
+          - datasec
+          - networksec
+          - physicalsec
+          - cloudsec
+          - devsecops
+          - iam
+          - asm
+          - mobile
+          - compliance
+          - learning
+          - programming
+          - maker
+          - blogs
+          - youtube
+          - podcasts
+          - newsletters
+          - conferences
+          - culture
+          - events
+          - rssNews
+          - rssVendor
+          - rssIndy
+          - liveFeeds
+
+      description:
+        description: 'Short description (1–3 sentences, no marketing copy) *'
+        required: true
+        type: string
+
+      # ── Optional fields ───────────────────────────────────────────
+      badge:
+        description: 'Badge label  (e.g. Free, Open Source, Gov, CTF)'
+        required: false
+        default: ''
+        type: string
+
+      badge_class:
+        description: 'Badge color class'
+        required: false
+        type: choice
+        default: badge-green
+        options:
+          - badge-green
+          - badge-cyan
+          - badge-purple
+          - badge-amber
+          - badge-red
+          - badge-magenta
+          - badge-fuchsia
+          - badge-rose
+
+      tags:
+        description: 'Tags — comma-separated, lowercase, hyphenated  (e.g. free,web,ctf)'
+        required: false
+        default: ''
+        type: string
+
+      rss_url:
+        description: 'RSS/Atom feed URL  (required for liveFeeds / rssNews / rssVendor / rssIndy)'
+        required: false
+        default: ''
+        type: string
+
+      feed_color:
+        description: 'Feed accent color hex  (liveFeeds only, e.g. #00ff9d)'
+        required: false
+        default: '#00c8ff'
+        type: string
+
+      # ── Event-specific fields ─────────────────────────────────────
+      location:
+        description: 'Event location  (events category only)'
+        required: false
+        default: ''
+        type: string
+
+      date:
+        description: 'Event date string  (events category only, e.g. Aug 2026)'
+        required: false
+        default: ''
+        type: string
+
+      cost:
+        description: 'Event cost  (events category only, e.g. ~$300 / Free)'
+        required: false
+        default: ''
+        type: string
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  create-entry:
+    name: Validate & open PR
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout main
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 1
+
+      - name: Validate inputs
+        run: |
+          URL="${{ github.event.inputs.url }}"
+          if [[ ! "$URL" =~ ^https?:// ]]; then
+            echo "::error::URL must start with http:// or https://"
+            exit 1
+          fi
+
+          # Quick reachability check
+          CODE=$(curl -s -o /dev/null -w "%{http_code}" --max-time 15 -L \
+            -A "Mozilla/5.0 (compatible; cybersecuritylibrary-bot/1.0)" "$URL" 2>/dev/null || echo "000")
+          if [[ "$CODE" == "000" ]]; then
+            echo "::error::URL is not reachable: $URL"
+            exit 1
+          fi
+          echo "URL reachable (HTTP $CODE): $URL"
+
+          # Validate RSS URL if provided
+          RSS="${{ github.event.inputs.rss_url }}"
+          if [[ -n "$RSS" ]]; then
+            RCODE=$(curl -s -o /tmp/rssbody -w "%{http_code}" --max-time 20 -L "$RSS" 2>/dev/null || echo "000")
+            if [[ "$RCODE" =~ ^[23] ]] && head -c 500 /tmp/rssbody | grep -qiE '<rss|<feed|<atom|<\?xml'; then
+              echo "RSS feed valid (HTTP $RCODE): $RSS"
+            else
+              echo "::warning::RSS URL may not be a valid feed (HTTP $RCODE). Proceeding anyway."
+            fi
+          fi
+
+      - name: Build new DB entry and append to RESOURCES_DB.js
+        id: build_entry
+        run: |
+          python3 - <<'PYEOF'
+          import json, re, os
+
+          title       = os.environ.get('INPUT_TITLE', '')
+          url         = os.environ.get('INPUT_URL', '')
+          category    = os.environ.get('INPUT_CATEGORY', '')
+          description = os.environ.get('INPUT_DESCRIPTION', '')
+          badge       = os.environ.get('INPUT_BADGE', '')
+          badge_class = os.environ.get('INPUT_BADGE_CLASS', 'badge-green')
+          tags_raw    = os.environ.get('INPUT_TAGS', '')
+          rss_url     = os.environ.get('INPUT_RSS_URL', '')
+          feed_color  = os.environ.get('INPUT_FEED_COLOR', '#00c8ff')
+          location    = os.environ.get('INPUT_LOCATION', '')
+          date        = os.environ.get('INPUT_DATE', '')
+          cost        = os.environ.get('INPUT_COST', '')
+
+          def js_str(s):
+              return s.replace("\\", "\\\\").replace("'", "\\'")
+
+          tags = [t.strip().lower() for t in tags_raw.split(',') if t.strip()]
+          tags_js = ', '.join(f"'{js_str(t)}'" for t in tags)
+
+          # Build the JS object literal depending on category
+          is_feed    = category in ('liveFeeds',)
+          is_rss_dir = category in ('rssNews', 'rssVendor', 'rssIndy')
+          is_event   = category == 'events'
+
+          if is_feed:
+              feed_id = re.sub(r'[^a-z0-9]', '', title.lower())[:20]
+              entry = (
+                  f"  {{ id:'{js_str(feed_id)}', name:'{js_str(title)}', "
+                  f"url:'{js_str(rss_url or url)}', site:'{js_str(url)}', "
+                  f"color:'{js_str(feed_color)}' }}"
+              )
+          elif is_rss_dir:
+              entry = (
+                  f"  {{ name:'{js_str(title)}', site:'{js_str(url)}', "
+                  f"rss:'{js_str(rss_url)}' }}"
+              )
+          else:
+              parts = [
+                  f"title:'{js_str(title)}'",
+                  f"url:'{js_str(url)}'",
+              ]
+              if badge:
+                  parts.append(f"badge:'{js_str(badge)}'")
+                  parts.append(f"badgeClass:'{js_str(badge_class)}'")
+              parts.append(f"desc:'{js_str(description)}'")
+              if is_event:
+                  if location: parts.append(f"location:'{js_str(location)}'")
+                  if date:     parts.append(f"date:'{js_str(date)}'")
+                  if cost:     parts.append(f"cost:'{js_str(cost)}'")
+              if tags:
+                  parts.append(f"tags:[{tags_js}]")
+              entry = "  { " + ", ".join(parts) + " }"
+
+          # Read RESOURCES_DB.js and insert entry into the correct category array
+          with open('RESOURCES_DB.js', 'r') as f:
+              content = f.read()
+
+          # Find the category array closing bracket and insert before it
+          # Pattern: find "category: [" ... last entry ... "]" and insert before "]"
+          pattern = rf'({re.escape(category)}\s*:\s*\[)(.*?)(\n\])'
+          def replacer(m):
+              return m.group(1) + m.group(2) + ',\n' + entry + '\n' + m.group(3)
+
+          new_content, n = re.subn(pattern, replacer, content, count=1, flags=re.DOTALL)
+
+          if n == 0:
+              print(f'ERROR: category "{category}" not found in RESOURCES_DB.js')
+              exit(1)
+
+          with open('RESOURCES_DB.js', 'w') as f:
+              f.write(new_content)
+
+          print(f'Entry added to category: {category}')
+          print(f'Entry preview: {entry[:120]}...')
+
+          # Write for step summary
+          with open(os.environ['GITHUB_STEP_SUMMARY'], 'a') as s:
+              s.write(f'### New Entry Added\n')
+              s.write(f'- **Title**: {title}\n')
+              s.write(f'- **URL**: {url}\n')
+              s.write(f'- **Category**: `{category}`\n')
+              s.write(f'```js\n{entry}\n```\n')
+          PYEOF
+        env:
+          INPUT_TITLE:       ${{ github.event.inputs.title }}
+          INPUT_URL:         ${{ github.event.inputs.url }}
+          INPUT_CATEGORY:    ${{ github.event.inputs.category }}
+          INPUT_DESCRIPTION: ${{ github.event.inputs.description }}
+          INPUT_BADGE:       ${{ github.event.inputs.badge }}
+          INPUT_BADGE_CLASS: ${{ github.event.inputs.badge_class }}
+          INPUT_TAGS:        ${{ github.event.inputs.tags }}
+          INPUT_RSS_URL:     ${{ github.event.inputs.rss_url }}
+          INPUT_FEED_COLOR:  ${{ github.event.inputs.feed_color }}
+          INPUT_LOCATION:    ${{ github.event.inputs.location }}
+          INPUT_DATE:        ${{ github.event.inputs.date }}
+          INPUT_COST:        ${{ github.event.inputs.cost }}
+
+      - name: Re-sync DB into index.html
+        run: |
+          python3 - <<'PYEOF'
+          import re, sys
+          with open('RESOURCES_DB.js') as f: db = f.read().rstrip()
+          with open('index.html') as f: html = f.read()
+          s, e = '<!-- @@RESOURCES_DB_START@@ -->', '<!-- @@RESOURCES_DB_END@@ -->'
+          if s not in html: sys.exit(0)
+          block = s + '\n<script>\n' + db + '\n</script>\n' + e
+          new_html = re.sub(re.escape(s) + r'.*?' + re.escape(e), block, html, flags=re.DOTALL)
+          with open('index.html', 'w') as f: f.write(new_html)
+          print('index.html synced.')
+          PYEOF
+
+      - name: Create PR branch and open pull request
+        run: |
+          SAFE_TITLE=$(echo "${{ github.event.inputs.title }}" | tr '[:upper:]' '[:lower:]' | sed 's/[^a-z0-9]/-/g' | sed 's/--*/-/g' | cut -c1-40)
+          BRANCH="add-entry/${SAFE_TITLE}-$(date +%s)"
+
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git checkout -b "$BRANCH"
+          git add RESOURCES_DB.js index.html
+          git commit -m "feat: add '${{ github.event.inputs.title }}' to ${{ github.event.inputs.category }}"
+          git push -u origin "$BRANCH"
+          echo "BRANCH=$BRANCH" >> $GITHUB_ENV
+
+      - name: Open pull request
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const branch = process.env.BRANCH;
+            const title  = `${{ github.event.inputs.title }}`;
+            const cat    = `${{ github.event.inputs.category }}`;
+            const url    = `${{ github.event.inputs.url }}`;
+            const desc   = `${{ github.event.inputs.description }}`;
+            const tags   = `${{ github.event.inputs.tags }}`;
+
+            const body = [
+              `## [RESOURCE] ${title}`,
+              '',
+              `Auto-generated by the **Add Resource Entry** workflow (triggered by @${context.actor}).`,
+              '',
+              '| Field | Value |',
+              '|-------|-------|',
+              `| **Title** | ${title} |`,
+              `| **URL** | ${url} |`,
+              `| **Category** | \`${cat}\` |`,
+              `| **Description** | ${desc} |`,
+              `| **Tags** | ${tags || '_none_'} |`,
+              '',
+              '## Checklist',
+              '- [ ] URL manually verified as publicly accessible',
+              '- [ ] Description is accurate and free of marketing language',
+              '- [ ] Category is correct',
+              '- [ ] CI checks pass',
+              '',
+              '_Please review and merge or request changes._',
+            ].join('\n');
+
+            const pr = await github.rest.pulls.create({
+              owner: context.repo.owner,
+              repo:  context.repo.repo,
+              title: `[RESOURCE] Add ${title}`,
+              head:  branch,
+              base:  'main',
+              body,
+              draft: false,
+            });
+
+            console.log(`PR created: ${pr.data.html_url}`);
+
+            // Add label
+            try {
+              await github.rest.issues.addLabels({
+                owner: context.repo.owner,
+                repo:  context.repo.repo,
+                issue_number: pr.data.number,
+                labels: ['resource-submission', 'automated'],
+              });
+            } catch(e) { console.log('Labels not applied:', e.message); }
