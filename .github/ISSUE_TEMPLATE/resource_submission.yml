@@ -1,0 +1,116 @@
+name: Resource Submission
+description: Submit a new resource for inclusion in the Cyber Security Library
+title: "[RESOURCE] "
+labels: ["resource-submission", "needs-review"]
+assignees: []
+
+body:
+  - type: markdown
+    attributes:
+      value: |
+        ## Submit a New Resource
+        Thanks for contributing! Please fill in all required fields.
+        All submissions are automatically validated for URL reachability and schema correctness before merging.
+
+  - type: input
+    id: title
+    attributes:
+      label: Resource Title
+      description: The display name of the resource
+      placeholder: "e.g., PortSwigger Web Security Academy"
+    validations:
+      required: true
+
+  - type: input
+    id: url
+    attributes:
+      label: Resource URL
+      description: Primary URL — must be publicly accessible
+      placeholder: "https://example.com"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: category
+    attributes:
+      label: Category
+      description: Which section should this appear in?
+      options:
+        - events
+        - research
+        - tools
+        - training
+        - threatIntel
+        - communities
+        - appsec
+        - blueteam
+        - pentesting
+        - vulnmanagement
+        - enterpriseResponse
+        - datasec
+        - networksec
+        - physicalsec
+        - cloudsec
+        - devsecops
+        - iam
+        - asm
+        - mobile
+        - compliance
+        - blogs
+        - youtube
+        - podcasts
+        - newsletters
+        - conferences
+        - culture
+        - liveFeeds (RSS only)
+        - rssNews (RSS feed URL required)
+        - rssVendor (RSS feed URL required)
+        - rssIndy (RSS feed URL required)
+    validations:
+      required: true
+
+  - type: textarea
+    id: description
+    attributes:
+      label: Description
+      description: A concise, accurate description (1–3 sentences). No marketing language.
+      placeholder: "What is this resource and why is it useful to the security community?"
+    validations:
+      required: true
+
+  - type: input
+    id: badge
+    attributes:
+      label: Badge Text (optional)
+      description: Short label shown on the card (e.g., "Free", "Open Source", "Gov")
+      placeholder: "Free"
+
+  - type: input
+    id: rss_url
+    attributes:
+      label: RSS/Atom Feed URL (if applicable)
+      description: Required for liveFeeds, rssNews, rssVendor, rssIndy categories
+      placeholder: "https://example.com/feed/"
+
+  - type: input
+    id: tags
+    attributes:
+      label: Tags
+      description: Comma-separated keywords for search (lowercase, hyphenated)
+      placeholder: "web-security, ctf, free, open-source"
+
+  - type: checkboxes
+    id: checklist
+    attributes:
+      label: Submission Checklist
+      options:
+        - label: The URL is publicly accessible without login
+          required: true
+        - label: This resource is not already listed in the library
+          required: true
+        - label: The description is accurate and does not contain marketing copy
+          required: true
+        - label: This resource is relevant to the ethical security research community
+          required: true
+        - label: I have read the contribution guidelines in the README
+          required: false

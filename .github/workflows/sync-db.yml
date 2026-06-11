@@ -1,0 +1,99 @@
+name: Sync RESOURCES_DB → index.html
+
+# Triggers whenever RESOURCES_DB.js changes on any branch,
+# or manually. Injects the DB content inline into index.html
+# between the @@RESOURCES_DB_START@@ / @@RESOURCES_DB_END@@ markers
+# so the deployed page is fully self-contained.
+
+on:
+  push:
+    paths:
+      - 'RESOURCES_DB.js'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  sync:
+    name: Inject DB into index.html
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: Validate RESOURCES_DB.js syntax
+        run: |
+          node -e "
+            const fs = require('fs');
+            const src = fs.readFileSync('RESOURCES_DB.js', 'utf8');
+            try {
+              const db = eval('(' + src.replace(/^var RESOURCES_DB\\s*=/, '').replace(/;\\s*$/, '') + ')');
+              const keys = Object.keys(db);
+              const total = keys.reduce((n,k) => n + (Array.isArray(db[k]) ? db[k].length : 0), 0);
+              console.log('DB valid: ' + keys.length + ' categories, ' + total + ' entries');
+            } catch(e) {
+              console.error('RESOURCES_DB.js syntax error:', e.message);
+              process.exit(1);
+            }
+          "
+
+      - name: Inject RESOURCES_DB.js into index.html
+        run: |
+          python3 - <<'PYEOF'
+          import re, sys
+
+          with open('RESOURCES_DB.js', 'r') as f:
+              db = f.read().rstrip()
+
+          with open('index.html', 'r') as f:
+              html = f.read()
+
+          marker_start = '<!-- @@RESOURCES_DB_START@@ -->'
+          marker_end   = '<!-- @@RESOURCES_DB_END@@ -->'
+
+          if marker_start not in html or marker_end not in html:
+              print('ERROR: sync markers not found in index.html')
+              sys.exit(1)
+
+          # Replace everything between markers with an inline <script> block
+          inline_block = (
+              marker_start + '\n'
+              '<script>\n'
+              + db + '\n'
+              '</script>\n'
+              + marker_end
+          )
+
+          pattern = re.escape(marker_start) + r'.*?' + re.escape(marker_end)
+          new_html = re.sub(pattern, inline_block, html, flags=re.DOTALL)
+
+          if new_html == html:
+              print('No change needed (DB already in sync).')
+          else:
+              with open('index.html', 'w') as f:
+                  f.write(new_html)
+              print('index.html updated with latest RESOURCES_DB.js content.')
+          PYEOF
+
+      - name: Check for changes
+        id: diff
+        run: |
+          if git diff --quiet index.html; then
+            echo "changed=false" >> $GITHUB_OUTPUT
+          else
+            echo "changed=true" >> $GITHUB_OUTPUT
+            echo "index.html has changed — will commit."
+          fi
+
+      - name: Commit synced index.html
+        if: steps.diff.outputs.changed == 'true'
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add index.html
+          git commit -m "chore: sync RESOURCES_DB.js into index.html [skip ci]"
+          git push

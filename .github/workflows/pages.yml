@@ -1,0 +1,83 @@
+name: Deploy to GitHub Pages
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'index.html'
+      - 'RESOURCES_DB.js'
+      - '.github/workflows/pages.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Inject RESOURCES_DB.js inline into index.html (build step)
+        run: |
+          python3 - <<'PYEOF'
+          import re, sys, shutil
+
+          with open('RESOURCES_DB.js', 'r') as f:
+              db = f.read().rstrip()
+
+          with open('index.html', 'r') as f:
+              html = f.read()
+
+          marker_start = '<!-- @@RESOURCES_DB_START@@ -->'
+          marker_end   = '<!-- @@RESOURCES_DB_END@@ -->'
+
+          if marker_start not in html or marker_end not in html:
+              print('Markers not found — deploying index.html as-is.')
+              sys.exit(0)
+
+          # Inline the DB as a <script> block for a fully self-contained page
+          inline_block = (
+              marker_start + '\n'
+              '<script>\n'
+              + db + '\n'
+              + '</script>\n'
+              + marker_end
+          )
+          pattern = re.escape(marker_start) + r'.*?' + re.escape(marker_end)
+          built_html = re.sub(pattern, inline_block, html, flags=re.DOTALL)
+
+          # Write to _site/ for pages artifact
+          import os
+          os.makedirs('_site', exist_ok=True)
+          with open('_site/index.html', 'w') as f:
+              f.write(built_html)
+
+          # Copy RESOURCES_DB.js alongside (for direct access / dev convenience)
+          shutil.copy('RESOURCES_DB.js', '_site/RESOURCES_DB.js')
+
+          print(f'Built _site/index.html ({len(built_html):,} bytes)')
+          PYEOF
+
+      - name: Setup Pages
+        uses: actions/configure-pages@v5
+
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: '_site'
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

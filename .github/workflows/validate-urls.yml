@@ -1,0 +1,83 @@
+name: Validate URLs
+
+on:
+  pull_request:
+    paths:
+      - 'RESOURCES_DB.js'
+      - 'index.html'
+  schedule:
+    - cron: '0 6 * * 1'  # Weekly Monday 06:00 UTC
+  workflow_dispatch:
+
+jobs:
+  validate-urls:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Extract URLs from RESOURCES_DB.js
+        id: extract
+        run: |
+          # Pull all url: and site: values from the JS database
+          grep -oP "(?<=url:')[^']+" RESOURCES_DB.js > urls_raw.txt || true
+          grep -oP '(?<=url:")[^"]+' RESOURCES_DB.js >> urls_raw.txt || true
+          grep -oP "(?<=site:')[^']+" RESOURCES_DB.js >> urls_raw.txt || true
+          grep -oP '(?<=site:")[^"]+' RESOURCES_DB.js >> urls_raw.txt || true
+          grep -oP "(?<=rss:')[^']+" RESOURCES_DB.js >> urls_raw.txt || true
+          grep -oP '(?<=rss:")[^"]+' RESOURCES_DB.js >> urls_raw.txt || true
+          # Filter to only http(s) URLs and deduplicate
+          grep -E '^https?://' urls_raw.txt | sort -u > urls.txt
+          echo "Found $(wc -l < urls.txt) unique URLs to validate"
+
+      - name: Validate URLs
+        run: |
+          failed=0
+          skipped=0
+          ok=0
+          results=""
+
+          while IFS= read -r url; do
+            # Skip known-problematic or auth-required URLs
+            if echo "$url" | grep -qE '(localhost|127\.0\.0\.1|example\.com)'; then
+              skipped=$((skipped+1))
+              continue
+            fi
+
+            http_code=$(curl -s -o /dev/null -w "%{http_code}" \
+              --max-time 20 \
+              --connect-timeout 10 \
+              -L \
+              -A "Mozilla/5.0 (compatible; cybersecuritylibrary-url-checker/1.0)" \
+              "$url" 2>/dev/null || echo "000")
+
+            if [[ "$http_code" =~ ^(2|3) ]]; then
+              ok=$((ok+1))
+            elif [[ "$http_code" == "429" || "$http_code" == "403" || "$http_code" == "401" ]]; then
+              # Rate-limited or auth-required — treat as reachable
+              ok=$((ok+1))
+              echo "SKIPPED (rate-limit/auth): $url [$http_code]"
+            else
+              echo "::warning::FAIL: $url [HTTP $http_code]"
+              results="${results}\n- $url (HTTP $http_code)"
+              failed=$((failed+1))
+            fi
+          done < urls.txt
+
+          echo ""
+          echo "Results: $ok OK, $failed FAILED, $skipped SKIPPED"
+
+          if [[ $failed -gt 0 ]]; then
+            echo "::warning::$failed URL(s) returned unexpected status codes:"
+            printf "$results"
+          fi
+
+      - name: Summary
+        if: always()
+        run: |
+          total=$(wc -l < urls.txt 2>/dev/null || echo 0)
+          echo "### URL Validation Summary" >> $GITHUB_STEP_SUMMARY
+          echo "Checked **$total** unique URLs from RESOURCES_DB.js" >> $GITHUB_STEP_SUMMARY
+          echo "See warnings above for any failures." >> $GITHUB_STEP_SUMMARY

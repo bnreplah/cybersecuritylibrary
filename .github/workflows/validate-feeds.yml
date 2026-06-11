@@ -1,0 +1,102 @@
+name: Validate RSS Feeds
+
+on:
+  pull_request:
+    paths:
+      - 'RESOURCES_DB.js'
+      - 'index.html'
+  schedule:
+    - cron: '0 12 * * *'  # Daily at 12:00 UTC
+  workflow_dispatch:
+
+jobs:
+  validate-feeds:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Extract RSS feed URLs
+        run: |
+          # Extract liveFeeds and rss* URLs from RESOURCES_DB.js
+          node -e "
+            const fs = require('fs');
+            const src = fs.readFileSync('RESOURCES_DB.js', 'utf8');
+            // Wrap in module export so we can require it
+            const wrapped = src.replace('var RESOURCES_DB', 'module.exports') + ';';
+            fs.writeFileSync('/tmp/db.js', wrapped);
+          "
+          node -e "
+            const db = require('/tmp/db.js');
+            const feeds = [];
+            (db.liveFeeds || []).forEach(f => feeds.push(f.url));
+            (db.rssNews || []).forEach(f => feeds.push(f.rss));
+            (db.rssVendor || []).forEach(f => feeds.push(f.rss));
+            (db.rssIndy || []).forEach(f => feeds.push(f.rss));
+            const unique = [...new Set(feeds.filter(Boolean))];
+            fs.writeFileSync('feeds.txt', unique.join('\n'));
+            console.log('Extracted', unique.length, 'feed URLs');
+          " 2>/dev/null || {
+            echo "Node extraction failed, falling back to grep"
+            grep -oP "(?<=url:')[^']+" RESOURCES_DB.js | grep -E '^https?://' > feeds.txt || true
+            grep -oP "(?<=rss:')[^']+" RESOURCES_DB.js | grep -E '^https?://' >> feeds.txt || true
+            sort -u -o feeds.txt feeds.txt
+          }
+
+          echo "Total feeds to check: $(wc -l < feeds.txt)"
+
+      - name: Validate RSS feeds are reachable
+        run: |
+          failed=0
+          ok=0
+
+          while IFS= read -r url; do
+            [[ -z "$url" ]] && continue
+
+            http_code=$(curl -s -o /tmp/feed_body.txt -w "%{http_code}" \
+              --max-time 25 \
+              --connect-timeout 10 \
+              -L \
+              -A "Mozilla/5.0 (compatible; cybersecuritylibrary-feed-checker/1.0)" \
+              "$url" 2>/dev/null || echo "000")
+
+            if [[ "$http_code" =~ ^(2|3) ]]; then
+              # Check that response looks like XML/RSS
+              content=$(head -c 500 /tmp/feed_body.txt 2>/dev/null)
+              if echo "$content" | grep -qiE '<rss|<feed|<atom|<channel|<?xml'; then
+                echo "OK [RSS/Atom]: $url"
+                ok=$((ok+1))
+              else
+                echo "::warning::WARN [not RSS/Atom]: $url [HTTP $http_code]"
+                ok=$((ok+1))  # still reachable
+              fi
+            elif [[ "$http_code" == "429" || "$http_code" == "403" ]]; then
+              echo "RATE-LIMITED: $url [$http_code] — marking as OK"
+              ok=$((ok+1))
+            else
+              echo "::warning::FAIL: $url [HTTP $http_code]"
+              failed=$((failed+1))
+            fi
+          done < feeds.txt
+
+          echo ""
+          echo "Feed Results: $ok reachable, $failed failed"
+
+          if [[ $failed -gt 0 ]]; then
+            echo "::warning::$failed feed(s) are unreachable. Consider removing or replacing them."
+          fi
+
+      - name: Summary
+        if: always()
+        run: |
+          total=$(wc -l < feeds.txt 2>/dev/null || echo 0)
+          echo "### RSS Feed Validation Summary" >> $GITHUB_STEP_SUMMARY
+          echo "Checked **$total** RSS/Atom feeds from RESOURCES_DB.js" >> $GITHUB_STEP_SUMMARY
+          echo "See warnings above for any unreachable feeds." >> $GITHUB_STEP_SUMMARY

@@ -1,0 +1,58 @@
+name: Bug Report
+description: Report a dead link, outdated info, broken feed, or technical issue
+title: "[BUG] "
+labels: ["bug", "needs-review"]
+assignees: []
+
+body:
+  - type: markdown
+    attributes:
+      value: |
+        ## Bug Report
+        Thanks for helping keep the library accurate. Please be as specific as possible.
+
+  - type: dropdown
+    id: bug_type
+    attributes:
+      label: Bug Type
+      options:
+        - Dead / broken link
+        - Outdated information
+        - Broken RSS feed
+        - Wrong category
+        - Duplicate entry
+        - Security concern
+        - UI / layout issue
+        - Other
+    validations:
+      required: true
+
+  - type: input
+    id: affected_resource
+    attributes:
+      label: Affected Resource
+      description: Name or URL of the resource with the problem
+      placeholder: "e.g., BleepingComputer RSS feed — https://www.bleepingcomputer.com/feed/"
+    validations:
+      required: true
+
+  - type: textarea
+    id: description
+    attributes:
+      label: Description
+      description: What is the problem? What did you expect to happen?
+      placeholder: "The BleepingComputer feed returns a 404 and has not loaded for several days."
+    validations:
+      required: true
+
+  - type: input
+    id: replacement
+    attributes:
+      label: Suggested fix or replacement URL (optional)
+      placeholder: "https://www.bleepingcomputer.com/rss/"
+
+  - type: textarea
+    id: context
+    attributes:
+      label: Additional context
+      description: Browser, date first noticed, screenshots, etc.
