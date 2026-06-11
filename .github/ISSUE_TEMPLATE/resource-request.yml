@@ -1,0 +1,52 @@
+name: Resource request (auto-curate)
+description: Ask the autonomous-researcher to propose new resources for a category. The bot will pick up issues labelled 'resource-request'.
+title: "[curate] <category>: <topic>"
+labels: ["resource-request"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Use this form to ask the auto-curation workflow to propose new
+        entries for `RESOURCES_DB.js`. The bot will pull recent context
+        from public security feeds, ask the LLM, verify URLs, and open a
+        PR with the additions — you (the maintainer) still review the
+        PR before anything lands on `main`.
+  - type: dropdown
+    id: category
+    attributes:
+      label: Category
+      description: Which `RESOURCES_DB.js` category should the bot curate?
+      options:
+        - tools
+        - research
+        - events
+        - training
+        - threatIntel
+        - rssNews
+        - rssVendor
+        - rssIndy
+        - liveFeeds
+    validations:
+      required: true
+  - type: input
+    id: topic
+    attributes:
+      label: Topic (optional)
+      description: A narrow focus, e.g. "cloud security", "AI red-teaming", "ICS/OT".
+      placeholder: "AI security"
+    validations:
+      required: false
+  - type: input
+    id: max
+    attributes:
+      label: Max entries
+      description: Cap the number of proposed entries. Default 5, max ~10.
+      value: "5"
+    validations:
+      required: false
+  - type: textarea
+    id: notes
+    attributes:
+      label: Notes (optional)
+      description: Anything the curator should know — specific niches, things to avoid, prior requests.
+      placeholder: e.g. "Already have CrowdStrike / SentinelOne — prefer open-source alternatives."
